@@ -1,9 +1,9 @@
-import "./App.css";
+import AutoSearch from "../src/components/auto-search";
 
 function App() {
   return (
     <div>
-      <h3>Auto Search</h3>
+     <AutoSearch/>
     </div>
   );
 }
