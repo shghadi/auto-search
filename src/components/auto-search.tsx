@@ -1,25 +1,51 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+
+type Item = {
+  id: number;
+  name: string;
+};
 
 function AutoSearch() {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState<string>("");
+  const [results, setResults] = useState<Item[]>([]);
+
+  useEffect(() => {
+    if (!query) {
+      setResults([]);
+      return;
+    }
+
+    const delayDebounce = setTimeout(() => {
+      fetch(`https://api.example.com/search?q=${query}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setResults(data.items as Item[]);
+        })
+        .catch((err) => console.error(err));
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
+  }, [query]);
 
   return (
-    <div className="container max-w-md mx-auto p-6">
-      <h2 className="text-2xl font-semibold mb-4 text-neutral-dark">
-        AutoSearch
-      </h2>
-
+    <div className="w-full max-w-md mx-auto p-4">
       <input
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="search..."
-        className="w-full rounded-2xl border border-neutral 
-                     px-4 py-2 pl-10 shadow-sm
-                     placeholder-neutral
-                     focus:border-primary focus:ring-2 focus:ring-primary-light 
-                     transition-all duration-200"
+        placeholder="جستجو..."
+        className="w-full px-4 py-2 rounded-2xl border border-gray-300 
+                   focus:outline-none focus:ring-2 focus:ring-primary-light
+                   shadow-sm"
       />
+
+      <ul className="mt-4 space-y-2">
+        {results.map((item) => (
+          <li key={item.id} className="p-2 bg-neutral-light rounded">
+            {item.name}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
