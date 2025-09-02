@@ -1,68 +1,49 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useDebounce } from "use-debounce";
 
 type Item = { id: number; name: string };
 
 export default function AutoSearch() {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState<string>("");
+  const [debouncedQuery] = useDebounce(query, 500);
   const [results, setResults] = useState<Item[]>([]);
   const [allItems, setAllItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
-  const debounceMs = 500;
-  const controllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     // Fetch all items once on mount
-    fetch(`http://localhost:5000/items`)
+    fetch(`http://localhost:3001/items`)
       .then((res) => res.json())
       .then((data: Item[]) => setAllItems(data))
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (!query.trim()) {
-      // show full list if search is empty
+    if (!debouncedQuery.trim()) {
       setResults(allItems);
       setError(null);
-      controllerRef.current?.abort();
       return;
     }
 
     setLoading(true);
     setError(null);
 
-    const controller = new AbortController();
-    controllerRef.current?.abort();
-    controllerRef.current = controller;
-
-    const t = setTimeout(() => {
-      fetch(`http://localhost:3001/items`, {
-        signal: controller.signal,
+    fetch(`http://localhost:3001/items`)
+      .then((res) => res.json())
+      .then((data: Item[]) => {
+        const normalizedQuery: string = debouncedQuery.toLowerCase();
+        const filtered: Item[] = data.filter((item) => {
+          const nameLower: string = item.name.toLowerCase();
+          return (
+            nameLower === normalizedQuery || nameLower.includes(normalizedQuery)
+          );
+        });
+        setResults(filtered.length ? filtered : allItems);
       })
-        .then((res) => res.json())
-        .then((data: Item[]) => {
-          const normalizedQuery = query.toLowerCase();
-          const filtered = data.filter((item) => {
-            const nameLower = item.name.toLowerCase();
-            return (
-              nameLower === normalizedQuery ||
-              nameLower.includes(normalizedQuery)
-            );
-          });
-          setResults(filtered.length ? filtered : allItems);
-        })
-        .catch((err) => {
-          if (err?.name !== "AbortError") setError("Error fetching data");
-        })
-        .finally(() => setLoading(false));
-    }, debounceMs);
-
-    return () => {
-      clearTimeout(t);
-      controller.abort();
-    };
-  }, [query, allItems]);
+      .catch(() => setError("Error fetching data"))
+      .finally(() => setLoading(false));
+  }, [debouncedQuery, allItems]);
 
   return (
     <div className="w-full max-w-md mx-auto p-4">
@@ -80,7 +61,7 @@ export default function AutoSearch() {
       {error && <div className="mt-3 text-sm text-red-600">{error}</div>}
 
       <ul className="mt-4 space-y-2">
-        {results.map((item) => (
+        {results.map((item: Item) => (
           <li key={item.id} className="p-2 bg-neutral-100 rounded">
             {item.name}
           </li>
